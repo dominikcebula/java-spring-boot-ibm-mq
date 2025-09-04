@@ -1,0 +1,8 @@
+.idea
+target
+*.kdb
+*.rdb
+*.sth
+*.crt
+*.jks
+*.log*

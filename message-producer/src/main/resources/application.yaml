@@ -1,0 +1,25 @@
+server:
+  port: 8082
+
+ibm:
+  mq:
+    queueManager: QM1
+    channel: DEV.APP.SVRCONN
+    connName: localhost(1414)
+    user: app
+    password: passw0rd
+    ssl-cipher-spec: TLS_RSA_WITH_AES_256_CBC_SHA256
+    use-i-b-m-cipher-mappings: false
+    ssl-bundle: ibmmq
+
+spring:
+  ssl:
+    bundle:
+      jks:
+        ibmmq:
+          keystore:
+            location: ${KEYSTORE_PATH}
+            password: ${KEYSTORE_PASSWORD}
+          truststore:
+            location: ${TRUSTSTORE_PATH}
+            password: ${TRUSTSTORE_PASSWORD}

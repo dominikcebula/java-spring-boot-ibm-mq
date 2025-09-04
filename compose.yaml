@@ -1,0 +1,14 @@
+services:
+  ibm-mq:
+    image: ibmcom/mq:9
+    environment:
+      LICENSE: accept
+      MQ_QMGR_NAME: QM1
+      MQ_ADMIN_PASSWORD: passw0rd
+      MQ_APP_PASSWORD: passw0rd
+    volumes:
+      - ./ibm-mq/mqm-key-repository:/etc/mqm-key-repository:ro
+      - ./ibm-mq/30-config.mqsc:/etc/mqm/30-config.mqsc:ro
+    ports:
+      - "1414:1414"
+      - "9443:9443"
