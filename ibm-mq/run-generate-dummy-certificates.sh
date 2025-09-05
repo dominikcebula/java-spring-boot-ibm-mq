@@ -1,17 +1,133 @@
 #!/bin/bash
 
-set -xe
+GREEN="\033[1;32m"
+RED="\033[1;31m"
+BLUE="\033[1;34m"
+NC="\033[0m"
+CHECK="✔️"
+CROSS="❌"
+INFO="ℹ️"
 
-SYSTEM_UID=$(id -u)
-SYSTEM_GID=$(id -g)
+WRKDIR="$(dirname "$0")/wrkdir"
+PASSWORD="changeit"
 
-rm -f java-client-certificates-and-keys/*.jks
+function info() {
+    echo -e "${BLUE}${INFO} $1${NC}"
+}
 
-docker run --rm -u "${SYSTEM_UID}:${SYSTEM_GID}" -v "$PWD":/scripts -w /scripts/mqm-key-repository --entrypoint /bin/bash ibmcom/mq:9 generate-dummy-certificates.sh
+function success() {
+    echo -e "${GREEN}${CHECK} $1${NC}"
+}
 
-keytool -import -alias mqserver -file ./mqm-key-repository/mqserver.crt -keystore ./mqm-key-repository/message-consumer-truststore.jks -storepass changeit -noprompt
-keytool -import -alias mqserver -file ./mqm-key-repository/mqserver.crt -keystore ./mqm-key-repository/message-producer-truststore.jks -storepass changeit -noprompt
+function error() {
+    echo -e "${RED}${CROSS} $1${NC}"
+}
 
-mv mqm-key-repository/*.jks java-client-certificates-and-keys
+function prepare_wrkdir() {
+    info "Creating temporary working directory at $WRKDIR"
+    rm -rf "$WRKDIR"
+    mkdir -p "$WRKDIR" || { error "Error occurred while creating working directory"; exit 1; }
+    success "Working directory created"
+}
 
-rm -f mqm-key-repository/*.crt
+function generate_root_ca() {
+    info "Generating Root CA private key and certificate"
+    openssl genrsa -out "$WRKDIR/rootCA.key" 4096 || { error "Error occurred while generating Root CA private key"; exit 1; }
+    openssl req -x509 -new -nodes -key "$WRKDIR/rootCA.key" -sha256 -days 3650 -out "$WRKDIR/rootCA.crt" -subj "/C=PL/ST=Test/L=Test/O=Test/OU=RootCA/CN=RootCA" || { error "Error occurred while generating Root CA certificate"; exit 1; }
+    success "Root CA generated"
+}
+
+function generate_intermediate_ca() {
+    info "Generating Intermediate CA private key and CSR"
+    openssl genrsa -out "$WRKDIR/intermediateCA.key" 4096 || { error "Error occurred while generating Intermediate CA private key"; exit 1; }
+    openssl req -new -key "$WRKDIR/intermediateCA.key" -out "$WRKDIR/intermediateCA.csr" -subj "/C=PL/ST=Test/L=Test/O=Test/OU=IntermediateCA/CN=IntermediateCA" || { error "Error occurred while generating Intermediate CA CSR"; exit 1; }
+    info "Signing Intermediate CA CSR with Root CA"
+    openssl x509 -req -in "$WRKDIR/intermediateCA.csr" -CA "$WRKDIR/rootCA.crt" -CAkey "$WRKDIR/rootCA.key" -CAcreateserial -out "$WRKDIR/intermediateCA.crt" -days 1825 -sha256 || { error "Error occurred while signing Intermediate CA"; exit 1; }
+    success "Intermediate CA generated and signed by Root CA"
+}
+
+function generate_signed_cert() {
+    local NAME=$1
+    local CN=$2
+    info "Generating private key and CSR for $NAME"
+    openssl genrsa -out "$WRKDIR/${NAME}.key" 2048 || { error "Error occurred while generating $NAME private key"; exit 1; }
+    openssl req -new -key "$WRKDIR/${NAME}.key" -out "$WRKDIR/${NAME}.csr" -subj "/C=PL/ST=Test/L=Test/O=Test/OU=$NAME/CN=$CN" || { error "Error occurred while generating $NAME CSR"; exit 1; }
+    info "Signing $NAME CSR with Intermediate CA"
+    openssl x509 -req -in "$WRKDIR/${NAME}.csr" -CA "$WRKDIR/intermediateCA.crt" -CAkey "$WRKDIR/intermediateCA.key" -CAcreateserial -out "$WRKDIR/${NAME}.crt" -days 825 -sha256 || { error "Error occurred while signing $NAME certificate"; exit 1; }
+    success "$NAME certificate and private key generated and signed by Intermediate CA"
+}
+
+function generate_pkcs12_keystore() {
+    local NAME=$1
+    local PFX=$2
+    info "Generating PKCS#12 keystore for $NAME"
+    openssl pkcs12 -export -out "$WRKDIR/$PFX" -inkey "$WRKDIR/${NAME}.key" -in "$WRKDIR/${NAME}.crt" -certfile "$WRKDIR/intermediateCA.crt" -password pass:$PASSWORD || { error "Error occurred while generating $NAME keystore"; exit 1; }
+    success "$NAME keystore ($PFX) generated"
+}
+
+function generate_pkcs12_truststore() {
+    local PFX=$1
+    info "Generating PKCS#12 truststore ($PFX) with Root and Intermediate CA"
+    openssl pkcs12 -export -out "$WRKDIR/$PFX" -nokeys -in "$WRKDIR/rootCA.crt" -certfile "$WRKDIR/intermediateCA.crt" -password pass:$PASSWORD || { error "Error occurred while generating truststore $PFX"; exit 1; }
+    success "Truststore ($PFX) generated"
+}
+
+function copy_keystores_to_target() {
+    info "Copying keystores and truststores to target locations"
+    cp "$WRKDIR/message-consumer-keystore.pfx" "$(dirname "$0")/java-client-certificates-and-keys/message-consumer-keystore.pfx" || { error "Error copying message-consumer-keystore"; exit 1; }
+    cp "$WRKDIR/message-consumer-truststore.pfx" "$(dirname "$0")/java-client-certificates-and-keys/message-consumer-truststore.pfx" || { error "Error copying message-consumer-truststore"; exit 1; }
+    cp "$WRKDIR/message-producer-keystore.pfx" "$(dirname "$0")/java-client-certificates-and-keys/message-producer-keystore.pfx" || { error "Error copying message-producer-keystore"; exit 1; }
+    cp "$WRKDIR/message-producer-truststore.pfx" "$(dirname "$0")/java-client-certificates-and-keys/message-producer-truststore.pfx" || { error "Error copying message-producer-truststore"; exit 1; }
+    success "Keystores and truststores copied"
+}
+
+function copy_certificates_and_keys_to_mqm_pki() {
+    info "Copying certificates and keys to mqm-pki structure"
+    local BASE_DIR
+    BASE_DIR="$(dirname "$0")/mqm-pki"
+    local TRUST_DIR="$BASE_DIR/trust"
+    local KEYS_DIR="$BASE_DIR/keys/mqserver"
+
+    mkdir -p "$TRUST_DIR" || { error "Error creating trust directory"; exit 1; }
+    mkdir -p "$KEYS_DIR" || { error "Error creating keys directory"; exit 1; }
+    mkdir -p "$TRUST_DIR/0" || { error "Error creating keys directory with 0 idx"; exit 1; }
+    mkdir -p "$TRUST_DIR/1" || { error "Error creating keys directory with 1 idx"; exit 1; }
+
+    cp "$WRKDIR/rootCA.crt" "$TRUST_DIR/0" || { error "Error copying rootCA.crt to trust/0"; exit 1; }
+    cp "$WRKDIR/intermediateCA.crt" "$TRUST_DIR/1" || { error "Error copying intermediateCA.crt to trust/1"; exit 1; }
+    cp "$WRKDIR/mqserver.key" "$KEYS_DIR/mqserver.key" || { error "Error copying mqserver.key"; exit 1; }
+    cp "$WRKDIR/mqserver.crt" "$KEYS_DIR/mqserver.crt" || { error "Error copying mqserver.crt"; exit 1; }
+
+    success "Certificates and keys copied to mqm-pki structure"
+}
+
+function cleanup() {
+    info "Cleaning up working directory"
+    rm -rf "$WRKDIR" || { error "Error occurred while cleaning up working directory"; exit 1; }
+    success "Working directory cleaned up"
+}
+
+function main() {
+    prepare_wrkdir
+
+    generate_root_ca
+    generate_intermediate_ca
+
+    generate_signed_cert "mqserver" "mqserver"
+    generate_signed_cert "message-consumer" "message-consumer"
+    generate_signed_cert "message-producer" "message-producer"
+
+    generate_pkcs12_keystore "message-consumer" "message-consumer-keystore.pfx"
+    generate_pkcs12_truststore "message-consumer-truststore.pfx"
+    generate_pkcs12_keystore "message-producer" "message-producer-keystore.pfx"
+    generate_pkcs12_truststore "message-producer-truststore.pfx"
+
+    copy_keystores_to_target
+    copy_certificates_and_keys_to_mqm_pki
+
+    cleanup
+
+    success "All operations completed successfully."
+}
+
+main

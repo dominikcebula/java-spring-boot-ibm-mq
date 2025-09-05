@@ -5,4 +5,8 @@ target
 *.sth
 *.crt
 *.jks
+*.csr
+*.key
+*.srl
+*.pfx
 *.log*
