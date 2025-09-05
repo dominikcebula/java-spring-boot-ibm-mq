@@ -5,44 +5,7 @@
 This repository contains a sample Java Spring Boot application that connects to IBM MQ using mTLS.
 The application demonstrates how to configure mTLS for secure communication with the IBM MQ server.
 
-```plantuml
-@startuml
-!define RECTANGLE class
-RECTANGLE "message-producer" as Producer {
-  == Keystore ==
-  - Client Certificate
-  - Client Private Key
-  == Truststore ==
-  - RootCA Certificate
-  - IntermediateCA Certificate
-}
-
-RECTANGLE "IBM MQ (Message Broker)" as MQ {
-  == Keystore ==
-  - Server Certificate
-  - Server Private Key
-  == Truststore ==
-  - RootCA Certificate
-  - IntermediateCA Certificate
-}
-
-RECTANGLE "message-consumer" as Consumer {
-  == Keystore ==
-  - Client Certificate
-  - Client Private Key
-  == Truststore ==
-  - RootCA Certificate
-  - IntermediateCA Certificate
-}
-
-Producer --> MQ : Produce message (mTLS)
-MQ --> Consumer : Deliver message (mTLS)
-
-' mTLS handshake arrows
-Producer <-right-> MQ : mTLS handshake\n1. Producer presents Client Certificate\n2. MQ presents Server Certificate\n3. Both verify via Truststore
-Consumer <-left-> MQ : mTLS handshake\n1. Consumer presents Client Certificate\n2. MQ presents Server Certificate\n3. Both verify via Truststore
-@enduml
-```
+![diagram.png](diagram.png)
 
 IBM MQ is used a message broker to facilitate communication between two Spring Boot applications: a message producer and
 a message consumer.
