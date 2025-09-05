@@ -61,7 +61,8 @@ function generate_pkcs12_keystore() {
     local NAME=$1
     local PFX=$2
     info "Generating PKCS#12 keystore for $NAME"
-    openssl pkcs12 -export -out "$WRKDIR/$PFX" -inkey "$WRKDIR/${NAME}.key" -in "$WRKDIR/${NAME}.crt" -certfile "$WRKDIR/intermediateCA.crt" -password pass:$PASSWORD || { error "Error occurred while generating $NAME keystore"; exit 1; }
+    cat "$WRKDIR/${NAME}.crt" "$WRKDIR/intermediateCA.crt" "$WRKDIR/rootCA.crt" > "$WRKDIR/${NAME}-fullchain.crt"
+    openssl pkcs12 -export -out "$WRKDIR/$PFX" -inkey "$WRKDIR/${NAME}.key" -in "$WRKDIR/${NAME}-fullchain.crt" -password pass:$PASSWORD || { error "Error occurred while generating $NAME keystore"; exit 1; }
     success "$NAME keystore ($PFX) generated"
 }
 
