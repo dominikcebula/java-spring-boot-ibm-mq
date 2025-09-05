@@ -8,7 +8,7 @@ ibm:
     connName: localhost(1414)
     user: app
     password: passw0rd
-    ssl-cipher-spec: TLS_RSA_WITH_AES_256_CBC_SHA256
+    ssl-cipher-spec: TLS_AES_256_GCM_SHA384
     use-i-b-m-cipher-mappings: false
     ssl-bundle: ibm-mq
 

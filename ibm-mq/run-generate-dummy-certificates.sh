@@ -68,9 +68,17 @@ function generate_pkcs12_keystore() {
 
 function generate_pkcs12_truststore() {
     local PFX=$1
-    info "Generating PKCS#12 truststore ($PFX) with Root and Intermediate CA"
-    openssl pkcs12 -export -out "$WRKDIR/$PFX" -nokeys -in "$WRKDIR/rootCA.crt" -certfile "$WRKDIR/intermediateCA.crt" -password pass:$PASSWORD || { error "Error occurred while generating truststore $PFX"; exit 1; }
-    success "Truststore ($PFX) generated"
+    info "Generating PKCS#12 truststore ($PFX) with Root and Intermediate CA using keytool"
+    local TRUSTSTORE_PATH="$WRKDIR/$PFX"
+    local ALIAS_ROOT="rootca"
+    local ALIAS_INTERMEDIATE="intermediateca"
+    # Remove existing truststore if present
+    rm -f "$TRUSTSTORE_PATH"
+    # Import Root CA
+    keytool -importcert -noprompt -trustcacerts -alias "$ALIAS_ROOT" -file "$WRKDIR/rootCA.crt" -keystore "$TRUSTSTORE_PATH" -storetype PKCS12 -storepass "$PASSWORD" || { error "Error importing Root CA into truststore $PFX"; exit 1; }
+    # Import Intermediate CA
+    keytool -importcert -noprompt -trustcacerts -alias "$ALIAS_INTERMEDIATE" -file "$WRKDIR/intermediateCA.crt" -keystore "$TRUSTSTORE_PATH" -storetype PKCS12 -storepass "$PASSWORD" || { error "Error importing Intermediate CA into truststore $PFX"; exit 1; }
+    success "Truststore ($PFX) generated using keytool"
 }
 
 function copy_keystores_to_target() {

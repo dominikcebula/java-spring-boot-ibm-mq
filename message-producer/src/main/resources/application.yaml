@@ -8,18 +8,20 @@ ibm:
     connName: localhost(1414)
     user: app
     password: passw0rd
-    ssl-cipher-spec: TLS_RSA_WITH_AES_256_CBC_SHA256
+    ssl-cipher-spec: TLS_AES_256_GCM_SHA384
     use-i-b-m-cipher-mappings: false
-    ssl-bundle: ibmmq
+    ssl-bundle: ibm-mq
 
 spring:
   ssl:
     bundle:
       jks:
-        ibmmq:
+        ibm-mq:
           keystore:
             location: ${KEYSTORE_PATH}
             password: ${KEYSTORE_PASSWORD}
+            type: "PKCS12"
           truststore:
             location: ${TRUSTSTORE_PATH}
             password: ${TRUSTSTORE_PASSWORD}
+            type: "PKCS12"
