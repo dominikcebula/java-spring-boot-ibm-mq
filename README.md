@@ -1,4 +1,4 @@
-# java-spring-boot-ibm-mq
+# IBM MQ usage with Spring Boot using mTLS
 
 ## Overview
 
