@@ -12,3 +12,33 @@ services:
     ports:
       - "1414:1414"
       - "9443:9443"
+  message-consumer:
+    build: ./message-consumer
+    volumes:
+      - ./ibm-mq/java-client-certificates-and-keys:/java-client-certificates-and-keys:ro
+    environment:
+      SERVER_PORT: 8081
+      IBM_MQ_CONN_NAME: ibm-mq(1414)
+      KEYSTORE_PATH: /java-client-certificates-and-keys/message-consumer-keystore.pfx
+      KEYSTORE_PASSWORD: changeit
+      TRUSTSTORE_PATH: /java-client-certificates-and-keys/message-consumer-truststore.pfx
+      TRUSTSTORE_PASSWORD: changeit
+    ports:
+      - "8081:8081"
+    depends_on:
+      - ibm-mq
+  message-producer:
+    build: ./message-producer
+    volumes:
+      - ./ibm-mq/java-client-certificates-and-keys:/java-client-certificates-and-keys:ro
+    environment:
+      SERVER_PORT: 8082
+      IBM_MQ_CONN_NAME: ibm-mq(1414)
+      KEYSTORE_PATH: /java-client-certificates-and-keys/message-producer-keystore.pfx
+      KEYSTORE_PASSWORD: changeit
+      TRUSTSTORE_PATH: /java-client-certificates-and-keys/message-producer-truststore.pfx
+      TRUSTSTORE_PASSWORD: changeit
+    ports:
+      - "8082:8082"
+    depends_on:
+      - ibm-mq

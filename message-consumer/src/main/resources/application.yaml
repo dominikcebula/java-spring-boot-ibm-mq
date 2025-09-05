@@ -1,11 +1,11 @@
 server:
-  port: 8081
+  port: ${SERVER_PORT:8081}
 
 ibm:
   mq:
     queueManager: QM1
     channel: DEV.APP.SVRCONN
-    connName: localhost(1414)
+    connName: ${IBM_MQ_CONN_NAME:localhost(1414)}
     user: app
     password: passw0rd
     ssl-cipher-spec: TLS_AES_256_GCM_SHA384
