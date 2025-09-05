@@ -102,6 +102,14 @@ function copy_certificates_and_keys_to_mqm_pki() {
     success "Certificates and keys copied to mqm-pki structure"
 }
 
+function set_permissions() {
+    local DIR=$1
+    local MODE=$2
+    info "Setting permissions for $DIR to $MODE"
+    chmod -R "$MODE" "$DIR" || { error "Error setting permissions for $DIR"; exit 1; }
+    success "Permissions for $DIR set to $MODE"
+}
+
 function cleanup() {
     info "Cleaning up working directory"
     rm -rf "$WRKDIR" || { error "Error occurred while cleaning up working directory"; exit 1; }
@@ -125,6 +133,9 @@ function main() {
 
     copy_keystores_to_target
     copy_certificates_and_keys_to_mqm_pki
+
+    set_permissions "$(dirname "$0")/java-client-certificates-and-keys" 0755
+    set_permissions "$(dirname "$0")/mqm-pki" 0755
 
     cleanup
 

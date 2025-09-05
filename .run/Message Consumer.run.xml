@@ -1,10 +1,10 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Message Consumer" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
     <envs>
-      <env name="KEYSTORE_PATH" value="ibm-mq/java-client-certificates-and-keys/message-consumer-keystore.jks" />
       <env name="KEYSTORE_PASSWORD" value="changeit" />
-      <env name="TRUSTSTORE_PATH" value="ibm-mq/java-client-certificates-and-keys/message-consumer-truststore.jks" />
+      <env name="KEYSTORE_PATH" value="ibm-mq/java-client-certificates-and-keys/message-consumer-keystore.pfx" />
       <env name="TRUSTSTORE_PASSWORD" value="changeit" />
+      <env name="TRUSTSTORE_PATH" value="ibm-mq/java-client-certificates-and-keys/message-consumer-truststore.pfx" />
     </envs>
     <module name="message-consumer" />
     <option name="SPRING_BOOT_MAIN_CLASS" value="com.dominikcebula.sample.ibm.mq.Application" />
