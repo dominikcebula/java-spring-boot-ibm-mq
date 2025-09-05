@@ -4,6 +4,12 @@ Sample code for IBM MQ usage with Spring Boot
 
 TBD - work in progress
 
+## Producing the message
+
+```shell
+curl localhost:8082/api/v1/produce-message
+```
+
 ## References
 
 - [Securing Spring Boot Applications With SSL](https://spring.io/blog/2023/06/07/securing-spring-boot-applications-with-ssl)
